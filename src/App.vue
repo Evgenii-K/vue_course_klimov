@@ -60,6 +60,19 @@
       </section>
       <template v-if="tickers.length > 0">
         <hr class="w-full border-t border-gray-600 my-4" />
+        <button
+          class="my-4 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+        >
+          Назад
+        </button>
+        <button
+          class="my-4 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+        >
+          Вперёд
+        </button>
+        <p>Фильтр</p>
+        <input type="text" placeholder="Filter" />
+        <hr class="w-full border-t border-gray-600 my-4" />
         <dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
           <div
             v-for="item in tickers"
@@ -200,8 +213,9 @@ export default {
         });
     },
     validAdd(selectTicker) {
+      selectTicker = selectTicker.toUpperCase();
       for (let i = 0; i < this.tickers.length; i++) {
-        if (this.tickers[i].name == selectTicker.toUpperCase()) {
+        if (this.tickers[i].name == selectTicker) {
           this.ticker = "";
           selectTicker = "";
           return (this.validShow = true);
@@ -209,8 +223,7 @@ export default {
       }
 
       if (
-        this.tickersName.filter((item) => item == selectTicker.toUpperCase())
-          .length
+        this.tickersName.filter((item) => item.includes(selectTicker)).length
       ) {
         this.add(selectTicker);
       } else {
@@ -219,7 +232,7 @@ export default {
     },
     add(selectTicker) {
       let newTicker = {
-        name: selectTicker.toUpperCase(),
+        name: selectTicker,
         price: "-",
       };
 
@@ -255,11 +268,15 @@ export default {
       let max = Math.max(...this.graph);
       let min = Math.min(...this.graph);
 
+      if (max == min) {
+        this.graph.map(() => 50);
+      }
+
       return this.graph.map((price) => 5 + ((price - min) * 95) / (max - min));
     },
   },
 };
 </script>
 
-<style src="./app.css">
+<style src="./index.css">
 </style>
