@@ -5,12 +5,12 @@
         <div class="flex">
           <div class="max-w-xs">
             <label for="wallet" class="block text-sm font-medium text-gray-700"
-              >Тикер {{ tickers }}</label
+              >Тикер</label
             >
             <div class="mt-1 relative rounded-md shadow-md">
               <input
                 v-model="ticker"
-                @keydown.enter="validAdd"
+                @keydown.enter="validAdd(ticker)"
                 @click="validShow = false"
                 type="text"
                 name="wallet"
@@ -19,27 +19,16 @@
                 placeholder="Например DOGE"
               />
               <div
+                v-if="tickersNameAfterFilter.length > 0"
                 class="flex bg-white shadow-md p-1 rounded-md shadow-md flex-wrap"
               >
                 <span
+                  v-for="(tickerItem, idx) in tickersNameAfterFilter"
+                  :key="idx"
+                  @click="validAdd(tickerItem)"
                   class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
                 >
-                  BTC
-                </span>
-                <span
-                  class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
-                >
-                  DOGE
-                </span>
-                <span
-                  class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
-                >
-                  BCH
-                </span>
-                <span
-                  class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
-                >
-                  CHD
+                  {{ tickerItem }}
                 </span>
               </div>
               <div v-if="validShow" class="text-sm text-red-600">
@@ -49,7 +38,7 @@
           </div>
         </div>
         <button
-          @click="validAdd"
+          @click="validAdd(ticker)"
           type="button"
           class="my-4 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
         >
@@ -174,6 +163,9 @@ export default {
     ticker() {
       if (this.ticker.length != 0) {
         this.validShow = false;
+        this.searchTickerForName();
+      } else {
+        this.tickersNameAfterFilter = [];
       }
     },
   },
@@ -181,6 +173,13 @@ export default {
     this.getTickerName();
   },
   methods: {
+    searchTickerForName() {
+      this.tickersNameAfterFilter = this.tickersName.filter(
+        (item) => item.slice(0, this.ticker.length) == this.ticker.toUpperCase()
+      );
+      this.tickersNameAfterFilter.reverse();
+      this.tickersNameAfterFilter = this.tickersNameAfterFilter.slice(0, 4);
+    },
     getTickerName() {
       fetch(
         "https://min-api.cryptocompare.com/data/all/coinlist?summary=true",
@@ -193,7 +192,6 @@ export default {
         })
         .then((res) => {
           this.tickersName = Object.keys(res.Data);
-          console.log(this.tickersName);
         })
         .catch((err) => {
           if (err) {
@@ -201,19 +199,27 @@ export default {
           }
         });
     },
-    validAdd() {
+    validAdd(selectTicker) {
       for (let i = 0; i < this.tickers.length; i++) {
-        if (this.tickers[i].name == this.ticker) {
+        if (this.tickers[i].name == selectTicker.toUpperCase()) {
           this.ticker = "";
+          selectTicker = "";
           return (this.validShow = true);
         }
       }
 
-      this.add();
+      if (
+        this.tickersName.filter((item) => item == selectTicker.toUpperCase())
+          .length
+      ) {
+        this.add(selectTicker);
+      } else {
+        this.ticker = "";
+      }
     },
-    add() {
+    add(selectTicker) {
       let newTicker = {
-        name: this.ticker.toUpperCase(),
+        name: selectTicker.toUpperCase(),
         price: "-",
       };
 
