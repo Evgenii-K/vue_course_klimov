@@ -123,7 +123,7 @@
           </h3>
           <div class="flex items-end border-gray-600 border-b border-l h-64">
             <div
-              v-for="(bar, i) in normolize()"
+              v-for="(bar, i) in normolized"
               :key="i"
               :style="{ height: `${bar}%` }"
               class="bg-purple-800 border w-10"
@@ -175,13 +175,13 @@ export default {
       tickersName: [],
       tickersNameAfterFilter: [],
       currentPage: 1,
-      tickersOnPage: [],
-      startPage: 1,
-      endPage: 6,
       filterText: "",
     };
   },
   watch: {
+    selectItem() {
+      this.graph = [];
+    },
     ticker() {
       if (this.ticker.length != 0) {
         this.validShow = false;
@@ -192,12 +192,10 @@ export default {
     },
     currentPage() {
       this.pushHistory();
-      this.showTickers();
     },
     filterText() {
       this.currentPage = 1;
       this.pushHistory();
-      this.showTickers();
     },
   },
   created() {
@@ -221,12 +219,36 @@ export default {
       this.tickers.forEach((item) => {
         this.fetchTickerPrice(item.name);
       });
-      this.showTickers();
     }
 
     this.getTickerName();
   },
-  computed: {},
+  computed: {
+    startPage() {
+      return (this.currentPage - 1) * 6;
+    },
+    endPage() {
+      return this.currentPage * 6;
+    },
+    tickersOnPage() {
+      const tickersOnPage = this.tickers
+        .filter((item) => item.name.includes(this.filterText.toUpperCase()))
+        .slice(this.startPage, this.endPage);
+
+      return tickersOnPage;
+    },
+    normolized() {
+      const max = Math.max(...this.graph);
+      const min = Math.min(...this.graph);
+
+      if (max == min) {
+        return this.graph.map(() => 50);
+      }
+
+      return this.graph.map((price) => 5 + ((price - min) * 95) / (max - min));
+    },
+  },
+
   methods: {
     pushHistory() {
       window.history.pushState(
@@ -234,14 +256,6 @@ export default {
         document.title,
         `${window.location.pathname}?filter=${this.filterText}&page=${this.currentPage}`
       );
-    },
-    showTickers() {
-      this.startPage = (this.currentPage - 1) * 6;
-      this.endPage = this.currentPage * 6;
-
-      this.tickersOnPage = this.tickers
-        .filter((item) => item.name.includes(this.filterText.toUpperCase()))
-        .slice(this.startPage, this.endPage);
     },
     searchTickerForName() {
       this.tickersNameAfterFilter = this.tickersName.filter(
@@ -302,8 +316,6 @@ export default {
       this.pushToLocalStorage();
 
       this.ticker = "";
-
-      this.showTickers();
     },
     fetchTickerPrice(name) {
       setInterval(async () => {
@@ -336,24 +348,10 @@ export default {
       }
 
       this.pushToLocalStorage();
-
-      this.showTickers();
     },
 
     select(item) {
       this.selectItem = item;
-      this.graph = [];
-    },
-
-    normolize() {
-      let max = Math.max(...this.graph);
-      let min = Math.min(...this.graph);
-
-      if (max == min) {
-        this.graph.map(() => 50);
-      }
-
-      return this.graph.map((price) => 5 + ((price - min) * 95) / (max - min));
     },
   },
 };
