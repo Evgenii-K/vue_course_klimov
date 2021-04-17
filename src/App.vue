@@ -20,7 +20,7 @@
               />
               <div
                 v-if="tickersNameAfterFilter.length > 0"
-                class="flex bg-white shadow-md p-1 rounded-md shadow-md flex-wrap"
+                class="flex bg-white shadow-md p-1 rounded-md flex-wrap"
               >
                 <span
                   v-for="(tickerItem, idx) in tickersNameAfterFilter"
@@ -61,21 +61,25 @@
       <template v-if="tickers.length > 0">
         <hr class="w-full border-t border-gray-600 my-4" />
         <button
+          v-show="currentPage > 1"
+          @click="currentPage--"
           class="my-4 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
         >
           Назад
         </button>
         <button
-          class="my-4 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+          v-show="tickers.length > endPage"
+          @click="currentPage++"
+          class="my-4 inline-flex items-center py-2 px-4 mx-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
         >
           Вперёд
         </button>
         <p>Фильтр</p>
-        <input type="text" placeholder="Filter" />
+        <input type="text" v-model="filterText" />
         <hr class="w-full border-t border-gray-600 my-4" />
         <dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
           <div
-            v-for="item in tickers"
+            v-for="item in tickersOnPage"
             :key="item.name"
             @click="select(item)"
             :class="{
@@ -170,6 +174,11 @@ export default {
       validShow: false,
       tickersName: [],
       tickersNameAfterFilter: [],
+      currentPage: 1,
+      tickersOnPage: [],
+      startPage: 1,
+      endPage: 6,
+      filterText: "",
     };
   },
   watch: {
@@ -181,11 +190,59 @@ export default {
         this.tickersNameAfterFilter = [];
       }
     },
+    currentPage() {
+      this.pushHistory();
+      this.showTickers();
+    },
+    filterText() {
+      this.currentPage = 1;
+      this.pushHistory();
+      this.showTickers();
+    },
   },
   created() {
+    const tickersData = localStorage.getItem("currentTickers-list");
+
+    const windowData = Object.fromEntries(
+      new URL(window.location).searchParams.entries()
+    );
+
+    if (windowData.filter) {
+      this.filterText = windowData.filter;
+    }
+
+    if (windowData.page) {
+      this.currentPage = windowData.page;
+    }
+
+    if (tickersData) {
+      this.tickers = JSON.parse(tickersData);
+
+      this.tickers.forEach((item) => {
+        this.fetchTickerPrice(item.name);
+      });
+      this.showTickers();
+    }
+
     this.getTickerName();
   },
+  computed: {},
   methods: {
+    pushHistory() {
+      window.history.pushState(
+        null,
+        document.title,
+        `${window.location.pathname}?filter=${this.filterText}&page=${this.currentPage}`
+      );
+    },
+    showTickers() {
+      this.startPage = (this.currentPage - 1) * 6;
+      this.endPage = this.currentPage * 6;
+
+      this.tickersOnPage = this.tickers
+        .filter((item) => item.name.includes(this.filterText.toUpperCase()))
+        .slice(this.startPage, this.endPage);
+    },
     searchTickerForName() {
       this.tickersNameAfterFilter = this.tickersName.filter(
         (item) => item.slice(0, this.ticker.length) == this.ticker.toUpperCase()
@@ -222,6 +279,8 @@ export default {
         }
       }
 
+      //Если введённый тикер существует => добавляем
+
       if (
         this.tickersName.filter((item) => item.includes(selectTicker)).length
       ) {
@@ -236,27 +295,49 @@ export default {
         price: "-",
       };
 
+      this.fetchTickerPrice(newTicker.name);
+
+      this.tickers.push(newTicker);
+
+      this.pushToLocalStorage();
+
+      this.ticker = "";
+
+      this.showTickers();
+    },
+    fetchTickerPrice(name) {
       setInterval(async () => {
         const req = await fetch(
-          `https://min-api.cryptocompare.com/data/price?fsym=${newTicker.name}&tsyms=USD&api_key=c8bcd3d15adb1171007f00c97a7a566fe64ae0fae33f7b6bd1aaa66326f31dac`
+          `https://min-api.cryptocompare.com/data/price?fsym=${name}&tsyms=USD&api_key=c8bcd3d15adb1171007f00c97a7a566fe64ae0fae33f7b6bd1aaa66326f31dac`
         );
 
         const data = await req.json();
 
-        this.tickers.find((el) => el.name == newTicker.name).price =
+        this.tickers.find((el) => el.name == name).price =
           data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
 
-        if (this.selectItem?.name == newTicker.name) {
+        if (this.selectItem?.name == name) {
           this.graph.push(data.USD);
         }
       }, 5000);
+    },
+    pushToLocalStorage() {
+      const tickersData = JSON.stringify(this.tickers);
 
-      this.tickers.push(newTicker);
-      this.ticker = "";
+      localStorage.setItem("currentTickers-list", tickersData);
     },
     remove(el) {
       this.tickers = this.tickers.filter((t) => t != el);
+
       if (this.selectItem === el) this.selectItem = null;
+
+      if (this.tickers.length <= this.endPage - 6 && this.currentPage > 1) {
+        this.currentPage--;
+      }
+
+      this.pushToLocalStorage();
+
+      this.showTickers();
     },
 
     select(item) {
