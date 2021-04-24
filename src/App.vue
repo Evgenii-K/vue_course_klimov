@@ -163,6 +163,8 @@
 </template>
 
 <script>
+import { loadTicker } from "./api.js";
+
 export default {
   name: "App",
   data() {
@@ -179,6 +181,14 @@ export default {
     };
   },
   watch: {
+    tickers() {
+      localStorage.setItem("currentTickers-list", JSON.stringify(this.tickers));
+    },
+    tickersOnPage() {
+      if (this.tickersOnPage.length === 0 && this.currentPage > 1) {
+        this.currentPage--;
+      }
+    },
     selectItem() {
       this.graph = [];
     },
@@ -190,28 +200,31 @@ export default {
         this.tickersNameAfterFilter = [];
       }
     },
-    currentPage() {
-      this.pushHistory();
+    pageStateOptions(value) {
+      window.history.pushState(
+        null,
+        document.title,
+        `${window.location.pathname}?filter=${value.filter}&page=${value.page}`
+      );
     },
     filterText() {
       this.currentPage = 1;
-      this.pushHistory();
     },
   },
   created() {
-    const tickersData = localStorage.getItem("currentTickers-list");
-
     const windowData = Object.fromEntries(
       new URL(window.location).searchParams.entries()
     );
 
-    if (windowData.filter) {
-      this.filterText = windowData.filter;
-    }
+    const VALID_KEYS = ["filterText", "currentPage"];
 
-    if (windowData.page) {
-      this.currentPage = windowData.page;
-    }
+    VALID_KEYS.forEach((key) => {
+      if (windowData[key]) {
+        this[key] = windowData[key];
+      }
+    });
+
+    const tickersData = localStorage.getItem("currentTickers-list");
 
     if (tickersData) {
       this.tickers = JSON.parse(tickersData);
@@ -224,6 +237,12 @@ export default {
     this.getTickerName();
   },
   computed: {
+    pageStateOptions() {
+      return {
+        filter: this.filterText,
+        page: this.currentPage,
+      };
+    },
     startPage() {
       return (this.currentPage - 1) * 6;
     },
@@ -311,19 +330,13 @@ export default {
 
       this.fetchTickerPrice(newTicker.name);
 
-      this.tickers.push(newTicker);
-
-      this.pushToLocalStorage();
+      this.tickers = [...this.tickers, newTicker];
 
       this.ticker = "";
     },
     fetchTickerPrice(name) {
       setInterval(async () => {
-        const req = await fetch(
-          `https://min-api.cryptocompare.com/data/price?fsym=${name}&tsyms=USD&api_key=c8bcd3d15adb1171007f00c97a7a566fe64ae0fae33f7b6bd1aaa66326f31dac`
-        );
-
-        const data = await req.json();
+        const data = await loadTicker(name);
 
         this.tickers.find((el) => el.name == name).price =
           data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
@@ -331,23 +344,27 @@ export default {
         if (this.selectItem?.name == name) {
           this.graph.push(data.USD);
         }
-      }, 5000);
-    },
-    pushToLocalStorage() {
-      const tickersData = JSON.stringify(this.tickers);
 
-      localStorage.setItem("currentTickers-list", tickersData);
+        // fetch(
+        //   `https://min-api.cryptocompare.com/data/price?fsym=${name}&tsyms=USD&api_key=c8bcd3d15adb1171007f00c97a7a566fe64ae0fae33f7b6bd1aaa66326f31dac`
+        // )
+        //   .then((res) => {
+        //     return res.json();
+        //   })
+        //   .then((data) => {
+        //     this.tickers.find((el) => el.name == name).price =
+        //       data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
+
+        //     if (this.selectItem?.name == name) {
+        //       this.graph.push(data.USD);
+        //     }
+        //   });
+      }, 5000);
     },
     remove(el) {
       this.tickers = this.tickers.filter((t) => t != el);
 
       if (this.selectItem === el) this.selectItem = null;
-
-      if (this.tickers.length <= this.endPage - 6 && this.currentPage > 1) {
-        this.currentPage--;
-      }
-
-      this.pushToLocalStorage();
     },
 
     select(item) {
