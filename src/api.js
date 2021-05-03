@@ -8,7 +8,7 @@ export const loadTicker = (tickerName) =>
     return res.json();
   });
 
-export function getTickerName() {
+export const getTickerName = () =>
   fetch("https://min-api.cryptocompare.com/data/all/coinlist?summary=true", {
     method: "GET",
   })
@@ -16,11 +16,9 @@ export function getTickerName() {
       return res.json();
     })
     .then((res) => {
-      this.tickersName = Object.keys(res.Data);
+      return Object.keys(res.Data);
     })
     .catch((err) => {
       if (err) {
         console.warn(err);
-      }
-    });
-}
+      }});

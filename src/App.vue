@@ -163,7 +163,7 @@
 </template>
 
 <script>
-import { loadTicker } from "./api.js";
+import { loadTicker, getTickerName } from "./api.js";
 
 export default {
   name: "App",
@@ -234,7 +234,11 @@ export default {
       });
     }
 
-    this.getTickerName();
+    setTimeout(async () => {
+      this.tickersName = await getTickerName();
+    }, 0);
+
+    this.fetchUserFromGithub();
   },
   computed: {
     pageStateOptions() {
@@ -283,25 +287,6 @@ export default {
       this.tickersNameAfterFilter.reverse();
       this.tickersNameAfterFilter = this.tickersNameAfterFilter.slice(0, 4);
     },
-    getTickerName() {
-      fetch(
-        "https://min-api.cryptocompare.com/data/all/coinlist?summary=true",
-        {
-          method: "GET",
-        }
-      )
-        .then((res) => {
-          return res.json();
-        })
-        .then((res) => {
-          this.tickersName = Object.keys(res.Data);
-        })
-        .catch((err) => {
-          if (err) {
-            console.warn(err);
-          }
-        });
-    },
     validAdd(selectTicker) {
       selectTicker = selectTicker.toUpperCase();
       for (let i = 0; i < this.tickers.length; i++) {
@@ -344,21 +329,6 @@ export default {
         if (this.selectItem?.name == name) {
           this.graph.push(data.USD);
         }
-
-        // fetch(
-        //   `https://min-api.cryptocompare.com/data/price?fsym=${name}&tsyms=USD&api_key=c8bcd3d15adb1171007f00c97a7a566fe64ae0fae33f7b6bd1aaa66326f31dac`
-        // )
-        //   .then((res) => {
-        //     return res.json();
-        //   })
-        //   .then((data) => {
-        //     this.tickers.find((el) => el.name == name).price =
-        //       data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
-
-        //     if (this.selectItem?.name == name) {
-        //       this.graph.push(data.USD);
-        //     }
-        //   });
       }, 5000);
     },
     remove(el) {
